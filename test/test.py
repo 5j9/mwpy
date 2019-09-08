@@ -62,8 +62,8 @@ class APITest(TestCase):
     async def login_test(self, post_patch):
         await api.login('U', 'P')
         post_patch.assert_has_calls((
-            call({'action': 'query', 'meta': 'tokens', 'type': 'login'}),
-            call({'action': 'login', 'lgname': 'U', 'lgpassword': 'P', 'lgdomain': None, 'lgtoken': 'LOGIN_TOKEN'})))
+            call(action='query', meta='tokens', type='login'),
+            call(action='login', lgname='U', lgpassword='P', lgdomain=None, lgtoken='LOGIN_TOKEN')))
 
     @patch.object(
         api, 'post', side_effect=(fake_rc_fist_post(), fake_rc_fanal_post()))
@@ -76,7 +76,7 @@ class APITest(TestCase):
         post1_call_data = {'list': 'recentchanges', 'rcstart': None, 'rcend': None, 'rcdir': None, 'rcnamespace': None, 'rcuser': None, 'rcexcludeuser': None, 'rctag': None, 'rcprop': 'timestamp', 'rcshow': None, 'rclimit': 1, 'rctype': None, 'rctoponly': None, 'rctitle': None, 'action': 'query'}
         post2_call_data = {**post1_call_data, 'rccontinue': '20190908072938|4484663', 'continue': '-||'}
         post_patch.assert_has_calls(
-            [call(post1_call_data), call(post2_call_data)])
+            [call(**post1_call_data), call(**post2_call_data)])
 
     @patch('mwpy._sleep', fake_sleep)
     @patch('mwpy._warning')
@@ -85,10 +85,11 @@ class APITest(TestCase):
         fake_maxlag_tokens_session_post(),
         fake_watch_token_session_post()))
     async def maxlag_test(self, post_mock, warning_mock):
+        ae = self.assertEqual
         tokens = await api.tokens('watch')
-        self.assertEqual(tokens, {'watchtoken': '+\\'})
+        ae(tokens, {'watchtoken': '+\\'})
         post_data = {'meta': 'tokens', 'type': 'watch', 'action': 'query', 'format': 'json', 'formatversion': '2', 'errorformat': 'plaintext', 'utf8': '', 'maxlag': 5}
-        self.assertEqual(
+        ae(
             [c.kwargs['data'] for c in post_mock.mock_calls],
             [post_data, post_data, post_data])
         warning_mock.assert_called_with('maxlag error (retry after 5 seconds)')

@@ -1,4 +1,4 @@
-from typing import Dict as _Dict, AsyncGenerator as _AsyncGenerator
+from typing import Dict as _Dict, AsyncGenerator as _AsyncGenerator, Any
 from logging import warning as _warning
 
 from asks import Session as _Session
@@ -34,21 +34,22 @@ class API:
         self.maxlag = maxlag
         self.user_agent = user_agent
 
-    async def post(self, data: dict) -> dict:
+    async def post(self, **data: Any) -> dict:
         """Post a request to MW API and return the json response.
 
         Add format, formatversion and errorformat, maxlag and utf8.
         Warn about warnings and raise errors as APIError.
         """
-        data = {
-            **data,
+        # print('#1#', data)
+        data.update({
             'format': 'json',
             'formatversion': '2',
             'errorformat': 'plaintext',
             'utf8': '',
-            'maxlag': self.maxlag}
+            'maxlag': self.maxlag})
         resp = await self.session.post(self.url, data=data)
         json = resp.json()
+        # print('#2#', json)
         if 'warnings' in json:
             _warning(str(json['warnings']))
         if 'errors' in json:
@@ -61,10 +62,10 @@ class API:
                 retry_after = resp.headers['retry-after']
                 _warning(f'maxlag error (retry after {retry_after} seconds)')
                 await _sleep(int(retry_after))
-                return await(self.post(data))
+                return await(self.post(**data))
         raise APIError(errors)
 
-    async def query(self, params: dict) -> _AsyncGenerator[dict, None]:
+    async def query(self, **params: Any) -> _AsyncGenerator[dict, None]:
         """Post an API query and yeild results.
 
         Handle continuations.
@@ -74,21 +75,20 @@ class API:
         if 'rawcontinue' in params:
             raise NotImplementedError(
                 'rawcontinue is implemented for query method')
-        params = {**params, 'action': 'query'}
         while True:
-            json = await self.post(params)
+            json = await self.post(action='query', **params)
             continue_ = json.get('continue')
             yield json
             if continue_ is None:
                 return
-            params = {**params, **continue_}
+            params.update(continue_)
 
     async def tokens(self, type: str) -> _Dict[str, str]:
         """Query API for tokens. Return the json response.
 
         https://www.mediawiki.org/wiki/API:Tokens
         """
-        return await self.meta_query({'meta': 'tokens', 'type': type})
+        return await self.meta_query('tokens', type=type)
 
     async def login(self, name: str, password: str, domain=None) -> None:
         """Login using bot name and bot password.
@@ -98,12 +98,12 @@ class API:
 
         https://www.mediawiki.org/wiki/API:Login
         """
-        await self.post({
-            'action': 'login',
-            'lgname': name,
-            'lgpassword': password,
-            'lgdomain': domain,
-            'lgtoken': (await self.tokens("login"))["logintoken"]})
+        await self.post(
+            action='login',
+            lgname=name,
+            lgpassword=password,
+            lgdomain=domain,
+            lgtoken=(await self.tokens("login"))["logintoken"])
 
     async def close(self) -> None:
         """Close the current API session."""
@@ -115,40 +115,38 @@ class API:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.close()
 
-    async def list_query(self, params: dict):
+    async def list_query(self, list: str, **params: Any):
         """Post a list query and yield the results.
 
         https://www.mediawiki.org/wiki/API:Lists
         """
-        list_ = params['list']
-        async for json in self.query(params):
+        async for json in self.query(list=list, **params):
             assert json['batchcomplete'] is True  # T84977#5471790
-            for item in json['query'][list_]:
+            for item in json['query'][list]:
                 yield item
 
-    async def prop_query(self, params: dict):
+    async def prop_query(self, prop, **params: Any):
         """Post a prop query, handle batchcomplete, and yield the results.
 
         https://www.mediawiki.org/wiki/API:Properties
         """
-        prop_name = params['prop']
         batch = {}
         batch_get = batch.get
         batch_clear = batch.clear
         batch_setdefault = batch.setdefault
-        async for json in self.query(params):
+        async for json in self.query(prop=prop, **params):
             if 'batchcomplete' in json:
                 if not batch:
                     for props in json['query']['pages'].values():
-                        yield props[prop_name]
+                        yield props[prop]
                 else:
                     for page_id, props in json['query']['pages'].items():
                         batch_props = batch_get(page_id)
                         if batch_props is None:
-                            yield props[prop_name]
+                            yield props[prop]
                         else:
-                            batch_prop = batch_props[prop_name]
-                            batch_prop += props[prop_name]
+                            batch_prop = batch_props[prop]
+                            batch_prop += props[prop]
                             yield batch_prop
                     batch_clear()
             else:
@@ -157,7 +155,7 @@ class API:
                     if props is not batch_props:
                         batch_props.update(props)
 
-    async def meta_query(self, params: dict):
+    async def meta_query(self, meta, **params: Any):
         """Post a meta query and yield the results.
 
         Note: siteinfo module requires special handling. Use self.siteinfo()
@@ -167,12 +165,11 @@ class API:
 
         https://www.mediawiki.org/wiki/API:Meta
         """
-        meta = params['meta']
         if meta == 'siteinfo':
             raise NotImplementedError('use self.siteinfo() instead.')
         if meta == 'filerepoinfo':
             meta = 'repos'
-        async for json in self.query(params):
+        async for json in self.query(meta=meta, **params):
             assert json['batchcomplete'] is True
             return json['query'][meta]
 
@@ -181,14 +178,14 @@ class API:
         numberingroup: str = None, inlanguagecode: str = None,
     ) -> dict:
         """https://www.mediawiki.org/wiki/API:Siteinfo"""
-        async for json in self.query({
-            'meta': 'siteinfo',
-            'siprop': prop,
-            'sifilteriw': filteriw,
-            'sishowalldb': showalldb,
-            'sinumberingroup': numberingroup,
-            'siinlanguagecode': inlanguagecode,
-        }):
+        async for json in self.query(
+            meta='siteinfo',
+            siprop=prop,
+            sifilteriw=filteriw,
+            sishowalldb=showalldb,
+            sinumberingroup=numberingroup,
+            siinlanguagecode=inlanguagecode,
+        ):
             assert 'batchcomplete' in json
             assert 'continue' not in json
             return json['query']
@@ -202,12 +199,10 @@ class API:
     ):
         """https://www.mediawiki.org/wiki/API:RecentChanges"""
         # Todo: somehow support rcgeneraterevisions
-        async for rc in self.list_query({
-            'list': 'recentchanges', 'rcstart': start, 'rcend': end,
-            'rcdir': dir, 'rcnamespace': namespace, 'rcuser': user,
-            'rcexcludeuser': excludeuser, 'rctag': tag, 'rcprop': prop,
-            'rcshow': show, 'rclimit': limit, 'rctype': type,
-            'rctoponly': toponly, 'rctitle': title,
-
-        }):
+        async for rc in self.list_query(
+            list='recentchanges', rcstart=start, rcend=end, rcdir=dir,
+            rcnamespace=namespace, rcuser=user, rcexcludeuser=excludeuser,
+            rctag=tag, rcprop=prop, rcshow=show, rclimit=limit, rctype=type,
+            rctoponly=toponly, rctitle=title,
+        ):
             yield rc
