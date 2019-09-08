@@ -1,8 +1,8 @@
-from typing import Dict, AsyncGenerator
-from logging import warning
+from typing import Dict as _Dict, AsyncGenerator as _AsyncGenerator
+from logging import warning as _warning
 
-from asks import Session
-from trio import sleep
+from asks import Session as _Session
+from trio import sleep as _sleep
 
 
 __version__ = '0.1.dev0'
@@ -29,7 +29,7 @@ class API:
             https://www.mediawiki.org/wiki/API:Etiquette#The_User-Agent_header
         """
         self.url = url
-        self.session = Session(
+        self.session = _Session(
             connections=1, headers={'User-Agent': user_agent})
         self.maxlag = maxlag
         self.user_agent = user_agent
@@ -50,7 +50,7 @@ class API:
         resp = await self.session.post(self.url, data=data)
         json = resp.json()
         if 'warnings' in json:
-            warning(str(json['warnings']))
+            _warning(str(json['warnings']))
         if 'errors' in json:
             return await self._handle_api_errors(data, resp, json['errors'])
         return json
@@ -59,12 +59,12 @@ class API:
         for error in errors:
             if error['code'] == 'maxlag':
                 retry_after = resp.headers['retry-after']
-                warning(f'maxlag error (retry after {retry_after} seconds)')
-                await sleep(int(retry_after))
+                _warning(f'maxlag error (retry after {retry_after} seconds)')
+                await _sleep(int(retry_after))
                 return await(self.post(data))
         raise APIError(errors)
 
-    async def query(self, params: dict) -> AsyncGenerator[dict, None]:
+    async def query(self, params: dict) -> _AsyncGenerator[dict, None]:
         """Post an API query and yeild results.
 
         Handle continuations.
@@ -83,7 +83,7 @@ class API:
                 return
             params = {**params, **continue_}
 
-    async def tokens(self, type: str) -> Dict[str, str]:
+    async def tokens(self, type: str) -> _Dict[str, str]:
         """Query API for tokens. Return the json response.
 
         https://www.mediawiki.org/wiki/API:Tokens
