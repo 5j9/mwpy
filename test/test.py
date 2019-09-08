@@ -61,22 +61,22 @@ class APITest(TestCase):
         api, 'post', side_effect=(fake_login_token_post(), fake_login_post()))
     async def login_test(self, post_patch):
         await api.login('U', 'P')
-        post_patch.assert_has_calls((
+        self.assertEqual(post_patch.mock_calls, [
             call(action='query', meta='tokens', type='login'),
-            call(action='login', lgname='U', lgpassword='P', lgdomain=None, lgtoken='LOGIN_TOKEN')))
+            call(action='login', lgname='U', lgpassword='P', lgdomain=None, lgtoken='LOGIN_TOKEN')])
 
     @patch.object(
         api, 'post', side_effect=(fake_rc_fist_post(), fake_rc_fanal_post()))
     async def recentchanges_test(self, post_patch):
-        self.assertEqual(
+        ae = self.assertEqual
+        ae(
             [rc async for rc in api.recentchanges(limit=1, prop='timestamp')],
             [
                 {'type': 'log', 'timestamp': '2019-09-08T07:30:00Z'},
                 {'type': 'categorize', 'timestamp': '2019-09-08T07:29:38Z'}])
         post1_call_data = {'list': 'recentchanges', 'rcstart': None, 'rcend': None, 'rcdir': None, 'rcnamespace': None, 'rcuser': None, 'rcexcludeuser': None, 'rctag': None, 'rcprop': 'timestamp', 'rcshow': None, 'rclimit': 1, 'rctype': None, 'rctoponly': None, 'rctitle': None, 'action': 'query'}
         post2_call_data = {**post1_call_data, 'rccontinue': '20190908072938|4484663', 'continue': '-||'}
-        post_patch.assert_has_calls(
-            [call(**post1_call_data), call(**post2_call_data)])
+        ae(post_patch.mock_calls, [call(**post1_call_data), call(**post2_call_data)])
 
     @patch('mwpy._sleep', fake_sleep)
     @patch('mwpy._warning')
