@@ -1,6 +1,6 @@
 from pprint import pformat
 from typing import Dict as _Dict, AsyncGenerator as _AsyncGenerator, Any
-from logging import warning as _warning
+from logging import warning as _warning, debug as _debug
 
 from asks import Session as _Session
 from trio import sleep as _sleep
@@ -43,6 +43,7 @@ class API:
         Add format, formatversion and errorformat, maxlag and utf8.
         Warn about warnings and raise errors as APIError.
         """
+        _debug('post call data: %s', data)
         data.update({
             'format': 'json',
             'formatversion': '2',
@@ -51,6 +52,7 @@ class API:
             'maxlag': self.maxlag})
         resp = await self.session.post(self.url, data=data)
         json = resp.json()
+        _debug('json response: %s', json)
         if 'warnings' in json:
             _warning(pformat(json['warnings']))
         if 'errors' in json:
