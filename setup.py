@@ -19,7 +19,7 @@ setup(
     ).group(1),
     author='5j9',
     author_email='5j9@users.noreply.github.com',
-    description="An async MediaWiki client written using asks.",
+    description="An async MediaWiki client using trio and asks.",
     license='GNU General Public License v3 (GPLv3)',
     long_description=long_description,
     url='https://github.com/5j9/mwpy',

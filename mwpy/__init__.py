@@ -16,8 +16,7 @@ class APIError(RuntimeError):
 class API:
 
     def __init__(
-        self, url: str, maxlag: int = 5,
-        user_agent: str = f'mwpy v{__version__}'
+        self, url: str, maxlag: int = 5, user_agent: str = None
     ) -> None:
         """Initialize API object.
 
@@ -25,14 +24,16 @@ class API:
             https://en.wikipedia.org/w/api.php
         :param maxlag: see:
             https://www.mediawiki.org/wiki/Manual:Maxlag_parameter
-        :param user_agent: see:
+        :param user_agent: A string to be used as the User-Agent header value.
+            If not provided a default value of f'mwpy/v{__version__}'} will be
+            used, however that's not enough most of the time. see:
+            https://meta.wikimedia.org/wiki/User-Agent_policy and
             https://www.mediawiki.org/wiki/API:Etiquette#The_User-Agent_header
         """
         self.url = url
-        self.session = _Session(
-            connections=1, headers={'User-Agent': user_agent})
+        self.session = _Session(connections=1, headers={
+            'User-Agent': user_agent or f'mwpy/v{__version__}'})
         self.maxlag = maxlag
-        self.user_agent = user_agent
 
     async def post(self, **data: Any) -> dict:
         """Post a request to MW API and return the json response.
