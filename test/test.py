@@ -74,8 +74,8 @@ class APITest(TestCase):
         post2_call_data = {**post1_call_data, 'rccontinue': '20190908072938|4484663', 'continue': '-||'}
         ae(post_patch.mock_calls, [call(**post1_call_data), call(**post2_call_data)])
 
-    @patch('mwpy._sleep', fake_sleep)
-    @patch('mwpy._warning')
+    @patch('mwpy._api.sleep', fake_sleep)
+    @patch('mwpy._api.warning')
     @session_post_patch(
         FakeResp(
             lambda: {
