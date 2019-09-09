@@ -22,6 +22,7 @@ setup(
     description="An async MediaWiki client using trio and asks.",
     license='GNU General Public License v3 (GPLv3)',
     long_description=long_description,
+    long_description_content_type='text/x-rst',
     url='https://github.com/5j9/mwpy',
     packages=['mwpy'],
     python_requires='>=3.5',

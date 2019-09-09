@@ -7,7 +7,7 @@ Installation
 ------------
 You'll need Python 3.5+.
 
-.. code-block:: none
+.. code-block::
 
     pip install mwpy
 
