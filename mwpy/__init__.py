@@ -1,3 +1,4 @@
+from pprint import pformat
 from typing import Dict as _Dict, AsyncGenerator as _AsyncGenerator, Any
 from logging import warning as _warning
 
@@ -50,7 +51,7 @@ class API:
         resp = await self.session.post(self.url, data=data)
         json = resp.json()
         if 'warnings' in json:
-            _warning(str(json['warnings']))
+            _warning(pformat(json['warnings']))
         if 'errors' in json:
             return await self._handle_api_errors(data, resp, json['errors'])
         return json
@@ -97,12 +98,13 @@ class API:
 
         https://www.mediawiki.org/wiki/API:Login
         """
-        await self.post(
+        json = await self.post(
             action='login',
             lgname=name,
             lgpassword=password,
             lgdomain=domain,
-            lgtoken=(await self.tokens("login"))["logintoken"])
+            lgtoken=(await self.tokens('login'))['logintoken'])
+        assert json['login']['result'] == 'Success', json['login']['result']
 
     async def close(self) -> None:
         """Close the current API session."""
