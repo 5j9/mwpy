@@ -1,3 +1,6 @@
+.. image:: https://badge.fury.io/py/mwpy.svg
+    :target: https://badge.fury.io/py/mwpy
+
 ``mwpy`` is an ``async`` Python_ client for MediaWiki_ API. It's built on top of asks_ and trio_!
 
 Installation
