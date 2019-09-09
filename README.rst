@@ -4,15 +4,16 @@ Installation
 ------------
 You'll need Python 3.5+.
 
-```
-pip install mwpy
-```
+.. code-block:: none
+
+    pip install mwpy
+
 
 Notable features
 ----------------
 - Supports setting a custom `User-Agent header`_ for each ``API`` instance.
 - Handles `query continuations`_.
-- Handles batchcomplete_ signals for prop queries and yeilds the results as soot as a batch is complete.
+- Handles batchcomplete_ signals for prop queries and yeilds the results as soon as a batch is complete.
 - Configurable maxlag_. Waits as the  API recommends and then retries.
 - Some convenient methods for accessing common API calls, e.g. for recentchanges_, login_, and siteinfo_.
 - Lightweight. ``mwpy`` is a thin wrapper. Method signatures are very similar to the parameters in an actual API URL. You can consult MediaWiki's documentation if in doubt about what a parameter does.
