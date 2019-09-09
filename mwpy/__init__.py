@@ -32,7 +32,8 @@ class API:
             https://www.mediawiki.org/wiki/API:Etiquette#The_User-Agent_header
         """
         self.url = url
-        self.session = _Session(connections=1, headers={
+        self.session = _Session(
+            connections=1, persist_cookies=True, headers={
             'User-Agent': user_agent or f'mwpy/v{__version__}'})
         self.maxlag = maxlag
 

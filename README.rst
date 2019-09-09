@@ -3,8 +3,6 @@
 
 ``mwpy`` is an ``async`` Python_ client for MediaWiki_ API. It's built on top of asks_ and trio_!
 
-Note: This project is **NOT READY** to use yet.
-
 Installation
 ------------
 You'll need Python 3.5+.
