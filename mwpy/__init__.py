@@ -41,7 +41,6 @@ class API:
         Add format, formatversion and errorformat, maxlag and utf8.
         Warn about warnings and raise errors as APIError.
         """
-        # print('#1#', data)
         data.update({
             'format': 'json',
             'formatversion': '2',
@@ -50,7 +49,6 @@ class API:
             'maxlag': self.maxlag})
         resp = await self.session.post(self.url, data=data)
         json = resp.json()
-        # print('#2#', json)
         if 'warnings' in json:
             _warning(str(json['warnings']))
         if 'errors' in json:
@@ -75,7 +73,7 @@ class API:
         """
         if 'rawcontinue' in params:
             raise NotImplementedError(
-                'rawcontinue is implemented for query method')
+                'rawcontinue is not implemented for query method')
         while True:
             json = await self.post(action='query', **params)
             continue_ = json.get('continue')
