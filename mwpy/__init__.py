@@ -16,7 +16,7 @@ class APIError(RuntimeError):
 class API:
 
     def __init__(
-        self, url: str, maxlag: int = 5, user_agent: str = None
+        self, url: str, user_agent: str = None, maxlag: int = 5,
     ) -> None:
         """Initialize API object.
 
