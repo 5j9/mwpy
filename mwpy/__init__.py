@@ -6,7 +6,7 @@ from asks import Session as _Session
 from trio import sleep as _sleep
 
 
-__version__ = '0.1'
+__version__ = '0.2.dev0'
 
 
 class APIError(RuntimeError):
