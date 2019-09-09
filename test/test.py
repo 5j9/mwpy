@@ -52,8 +52,8 @@ def session_post_patch(*return_values):
 class APITest(TestCase):
 
     @api_post_patch(
-        {'query': {'tokens': {'logintoken': 'LOGIN_TOKEN'}}, 'batchcomplete': True},
-        {'query': {'tokens': {'logintoken': 'LOGIN_TOKEN'}}})
+        {'batchcomplete': True, 'query': {'tokens': {'logintoken': 'LOGIN_TOKEN'}}},
+        {'login': {'result': 'Success', 'lguserid': 1, 'lgusername': 'U'}})
     async def login_test(self, post_patch):
         await api.login('U', 'P')
         self.assertEqual(post_patch.mock_calls, [
