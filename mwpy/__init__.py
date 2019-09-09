@@ -1,5 +1,6 @@
-from pprint import pformat
-from typing import Dict as _Dict, AsyncGenerator as _AsyncGenerator, Any
+from pprint import pformat as _pformat
+from typing import (
+    Dict as _Dict, AsyncGenerator as _AsyncGenerator, Any as _Any)
 from logging import warning as _warning, debug as _debug
 
 from asks import Session as _Session
@@ -34,10 +35,10 @@ class API:
         self.url = url
         self.session = _Session(
             connections=1, persist_cookies=True, headers={
-            'User-Agent': user_agent or f'mwpy/v{__version__}'})
+               'User-Agent': user_agent or f'mwpy/v{__version__}'})
         self.maxlag = maxlag
 
-    async def post(self, **data: Any) -> dict:
+    async def post(self, **data: _Any) -> dict:
         """Post a request to MW API and return the json response.
 
         Add format, formatversion and errorformat, maxlag and utf8.
@@ -54,7 +55,7 @@ class API:
         json = resp.json()
         _debug('json response: %s', json)
         if 'warnings' in json:
-            _warning(pformat(json['warnings']))
+            _warning(_pformat(json['warnings']))
         if 'errors' in json:
             return await self._handle_api_errors(data, resp, json['errors'])
         return json
@@ -68,7 +69,7 @@ class API:
                 return await(self.post(**data))
         raise APIError(errors)
 
-    async def query(self, **params: Any) -> _AsyncGenerator[dict, None]:
+    async def query(self, **params: _Any) -> _AsyncGenerator[dict, None]:
         """Post an API query and yeild results.
 
         Handle continuations.
@@ -119,7 +120,7 @@ class API:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.close()
 
-    async def list_query(self, list: str, **params: Any):
+    async def list_query(self, list: str, **params: _Any):
         """Post a list query and yield the results.
 
         https://www.mediawiki.org/wiki/API:Lists
@@ -129,7 +130,7 @@ class API:
             for item in json['query'][list]:
                 yield item
 
-    async def prop_query(self, prop, **params: Any):
+    async def prop_query(self, prop, **params: _Any):
         """Post a prop query, handle batchcomplete, and yield the results.
 
         https://www.mediawiki.org/wiki/API:Properties
@@ -159,7 +160,7 @@ class API:
                     if props is not batch_props:
                         batch_props.update(props)
 
-    async def meta_query(self, meta, **params: Any):
+    async def meta_query(self, meta, **params: _Any):
         """Post a meta query and yield the results.
 
         Note: siteinfo module requires special handling. Use self.siteinfo()
