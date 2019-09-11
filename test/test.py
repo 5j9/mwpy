@@ -1,6 +1,6 @@
 from collections import namedtuple
 from unittest import main, TestCase
-from unittest.mock import patch, call
+from unittest.mock import patch
 
 from trio import run
 
@@ -54,16 +54,16 @@ class APITest(TestCase):
     @api_post_patch(
         {'batchcomplete': True, 'query': {'tokens': {'logintoken': 'LOGIN_TOKEN'}}},
         {'login': {'result': 'Success', 'lguserid': 1, 'lgusername': 'U'}})
-    async def login_test(self, post_patch):
+    async def login_test(self, post_mock):
         await api.login('U', 'P')
-        self.assertEqual(post_patch.mock_calls, [
-            call(action='query', meta='tokens', type='login'),
-            call(action='login', lgname='U', lgpassword='P', lgdomain=None, lgtoken='LOGIN_TOKEN')])
+        self.assertEqual([c.kwargs for c in post_mock.mock_calls], [
+            {'action': 'query', 'meta': 'tokens', 'type': 'login'},
+            {'action': 'login', 'lgname': 'U', 'lgpassword': 'P', 'lgdomain': None, 'lgtoken': 'LOGIN_TOKEN'}])
 
     @api_post_patch(
         {'batchcomplete': True, 'continue': {'rccontinue': '20190908072938|4484663', 'continue': '-||'}, 'query': {'recentchanges': [{'type': 'log', 'timestamp': '2019-09-08T07:30:00Z'}]}},
         {'batchcomplete': True, 'query': {'recentchanges': [{'type': 'categorize', 'timestamp': '2019-09-08T07:29:38Z'}]}})
-    async def recentchanges_test(self, post_patch):
+    async def recentchanges_test(self, post_mock):
         ae = self.assertEqual
         ae(
             [rc async for rc in api.recentchanges(limit=1, prop='timestamp')],
@@ -72,7 +72,7 @@ class APITest(TestCase):
                 {'type': 'categorize', 'timestamp': '2019-09-08T07:29:38Z'}])
         post1_call_data = {'list': 'recentchanges', 'rcstart': None, 'rcend': None, 'rcdir': None, 'rcnamespace': None, 'rcuser': None, 'rcexcludeuser': None, 'rctag': None, 'rcprop': 'timestamp', 'rcshow': None, 'rclimit': 1, 'rctype': None, 'rctoponly': None, 'rctitle': None, 'action': 'query'}
         post2_call_data = {**post1_call_data, 'rccontinue': '20190908072938|4484663', 'continue': '-||'}
-        ae(post_patch.mock_calls, [call(**post1_call_data), call(**post2_call_data)])
+        ae([c.kwargs for c in post_mock.mock_calls], [post1_call_data, post2_call_data])
 
     @patch('mwpy._api.sleep', fake_sleep)
     @patch('mwpy._api.warning')
@@ -97,7 +97,7 @@ class APITest(TestCase):
         ae(
             [c.kwargs['data'] for c in post_mock.mock_calls],
             [post_data, post_data])
-        warning_mock.assert_called_with('maxlag error (retry after 5 seconds)')
+        warning_mock.assert_called_with('maxlag error (retrying after 5 seconds)')
 
     @api_post_patch({'batchcomplete': True, 'query': {'protocols': ['http://', 'https://']}})
     async def siteinfo_test(self, post_mock):
@@ -107,6 +107,28 @@ class APITest(TestCase):
         calls = post_mock.mock_calls
         ae(len(calls), 1)
         ae(calls[0].kwargs, {'action': 'query', 'meta': 'siteinfo', 'siprop': 'protocols', 'sifilteriw': None, 'sishowalldb': None, 'sinumberingroup': None, 'siinlanguagecode': None})
+
+    @api_post_patch(
+        {'continue': {'llcontinue': '15580374|bg', 'continue': '||'}, 'query': {'pages': [{'pageid': 15580374, 'ns': 0, 'title': 'Main Page', 'langlinks': [{'lang': 'ar', 'title': ''}]}]}},
+        {'batchcomplete': True, 'query': {'pages': [{'pageid': 15580374, 'ns': 0, 'title': 'Main Page', 'langlinks': [{'lang': 'zh', 'title': ''}]}]}})
+    async def langlinks_test(self, post_mock):
+        ae = self.assertEqual
+        titles_langlinks = [page_ll async for page_ll in api.langlinks(
+            titles='Main Page', limit=1)]
+        ae(len(titles_langlinks), 1)
+        ae([c.kwargs for c in post_mock.mock_calls], [
+            {'action': 'query', 'prop': 'langlinks', 'llprop': None, 'lllang': None, 'lltitle': None, 'lldir': None, 'llinlanguagecode': None, 'lllimit': 1, 'titles': 'Main Page'},
+            {'action': 'query', 'prop': 'langlinks', 'llprop': None, 'lllang': None, 'lltitle': None, 'lldir': None, 'llinlanguagecode': None, 'lllimit': 1, 'titles': 'Main Page', 'llcontinue': '15580374|bg', 'continue': '||'}])
+        ae(titles_langlinks[0], {'pageid': 15580374, 'ns': 0, 'title': 'Main Page', 'langlinks': [{'lang': 'ar', 'title': ''}, {'lang': 'zh', 'title': ''}]})
+
+    @api_post_patch({'batchcomplete': True, 'query': {'pages': [{'pageid': 1182793, 'ns': 0, 'title': 'Main Page'}]}, 'limits': {'langlinks': 500}})
+    async def lang_links_title_not_exists_test(self, post_mock):
+        ae = self.assertEqual
+        titles_langlinks = [page_ll async for page_ll in api.langlinks(
+            titles='Main Page')]
+        ae(len(titles_langlinks), 1)
+        ae(post_mock.mock_calls[0].kwargs, {'action': 'query', 'prop': 'langlinks', 'llprop': None, 'lllang': None, 'lltitle': None, 'lldir': None, 'llinlanguagecode': None, 'lllimit': 'max', 'titles': 'Main Page'})
+        ae(titles_langlinks[0], {'pageid': 1182793, 'ns': 0, 'title': 'Main Page'})
 
 
 if __name__ == '__main__':

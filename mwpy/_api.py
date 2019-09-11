@@ -42,7 +42,7 @@ class API:
         Add format, formatversion and errorformat, maxlag and utf8.
         Warn about warnings and raise errors as APIError.
         """
-        debug('post call data: %s', data)
+        debug('post data: %s', data)
         data.update({
             'format': 'json',
             'formatversion': '2',
@@ -107,6 +107,7 @@ class API:
             lgdomain=domain,
             lgtoken=(await self.tokens('login'))['logintoken'])
         assert json['login']['result'] == 'Success', json['login']['result']
+        # todo: store user and pass for relogin and assert username for now on
 
     async def close(self) -> None:
         """Close the current API session."""
@@ -138,25 +139,57 @@ class API:
         batch_clear = batch.clear
         batch_setdefault = batch.setdefault
         async for json in self.query(prop=prop, **params):
+            pages = json['query']['pages']
+            if type(pages) is dict:
+                if 'batchcomplete' in json:
+                    if not batch:
+                        for page in pages.values():
+                            yield page[prop]
+                        continue
+                    for page_id, page in pages.items():
+                        batch_page = batch_get(page_id)
+                        if batch_page is None:
+                            yield page[prop]
+                            continue
+                        batch_page.update(page)
+                        yield batch_page
+                    batch_clear()
+                    continue
+                for page_id, page in pages.items():
+                    batch_page = batch_setdefault(page_id, page)
+                    if page is not batch_page:
+                        batch_page.update(page)
+            assert type(pages) is list
             if 'batchcomplete' in json:
                 if not batch:
-                    for props in json['query']['pages'].values():
-                        yield props[prop]
-                        continue
-                for page_id, props in json['query']['pages'].items():
-                    batch_props = batch_get(page_id)
-                    if batch_props is None:
-                        yield props[prop]
-                    else:
-                        batch_prop = batch_props[prop]
-                        batch_prop += props[prop]
-                        yield batch_prop
+                    for page in pages:
+                        yield page
+                    continue
+                for page in pages:
+                    page_id = page['pageid']
+                    batch_page = batch_get(page_id)
+                    if batch_page is None:
+                        yield page
+                    batch_page[prop] += page[prop]
+                    yield batch_page
                 batch_clear()
                 continue
-            for page_id, props in json['query']['pages'].items():
-                batch_props = batch_setdefault(page_id, props)
-                if props is not batch_props:
-                    batch_props.update(props)
+            for page in pages:
+                page_id = page['pageid']
+                batch_page = batch_setdefault(page_id, page)
+                if page is not batch_page:
+                    batch_page[prop] += page[prop]
+
+    async def langlinks(
+        self, limit: int = 'max', prop: str = None, lang: str = None,
+        title: str = None, dir: str = None, inlanguagecode: str = None,
+        **prop_params
+    ):
+        async for page_llink in self.prop_query(
+            'langlinks', llprop=prop, lllang=lang, lltitle=title, lldir=dir,
+            llinlanguagecode=inlanguagecode, lllimit=limit, **prop_params
+        ):
+            yield page_llink
 
     async def meta_query(self, meta, **params: Any):
         """Post a meta query and yield the results.
