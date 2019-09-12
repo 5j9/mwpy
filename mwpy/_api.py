@@ -169,17 +169,19 @@ class API:
             yield page_llink
 
     async def meta_query(self, meta, **kwargs: Any):
-        """Post a meta query and yield the results.
+        """Post a meta query and return the result.
 
-        Note: siteinfo module requires special handling. Use self.siteinfo()
-            instead. There may be other meta queries that also require special
-            care. Use self.query() if there is no specific method for that
-            meta query.
+        Note: Some meta queries require special handling. Use `self.query()`
+            directly if this method cannot handle it properly and there is no
+            other specific method for it.
 
         https://www.mediawiki.org/wiki/API:Meta
         """
         if meta == 'siteinfo':
-            raise NotImplementedError('use self.siteinfo() instead.')
+            async for json in self.query(meta='siteinfo', **kwargs):
+                assert 'batchcomplete' in json
+                assert 'continue' not in json
+                return json['query']
         async for json in self.query(meta=meta, **kwargs):
             if meta == 'filerepoinfo':
                 meta = 'repos'
@@ -192,10 +194,7 @@ class API:
 
     async def siteinfo(self, **kwargs: Any) -> dict:
         """https://www.mediawiki.org/wiki/API:Siteinfo"""
-        async for json in self.query(meta='siteinfo', **kwargs):
-            assert 'batchcomplete' in json
-            assert 'continue' not in json
-            return json['query']
+        return await self.meta_query('siteinfo', **kwargs)
 
     async def recentchanges(self, rclimit: int = 'max', **kwargs: Any):
         """https://www.mediawiki.org/wiki/API:RecentChanges"""
