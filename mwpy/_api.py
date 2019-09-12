@@ -140,26 +140,6 @@ class API:
         batch_setdefault = batch.setdefault
         async for json in self.query(prop=prop, **params):
             pages = json['query']['pages']
-            if type(pages) is dict:
-                if 'batchcomplete' in json:
-                    if not batch:
-                        for page in pages.values():
-                            yield page[prop]
-                        continue
-                    for page_id, page in pages.items():
-                        batch_page = batch_get(page_id)
-                        if batch_page is None:
-                            yield page[prop]
-                            continue
-                        batch_page.update(page)
-                        yield batch_page
-                    batch_clear()
-                    continue
-                for page_id, page in pages.items():
-                    batch_page = batch_setdefault(page_id, page)
-                    if page is not batch_page:
-                        batch_page.update(page)
-            assert type(pages) is list
             if 'batchcomplete' in json:
                 if not batch:
                     for page in pages:
