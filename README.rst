@@ -9,7 +9,7 @@
 
 Installation
 ------------
-You'll need Python 3.5+.
+You'll need Python 3.6+.
 
 .. code-block::
 

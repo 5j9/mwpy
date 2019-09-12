@@ -6,7 +6,6 @@ install:
 script:
     - coverage run tests
 python:
-    - "3.5"
     - "3.6"
 matrix:
   include:
