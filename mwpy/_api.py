@@ -169,7 +169,7 @@ class API:
             yield page_llink
 
     async def meta_query(self, meta, **kwargs: Any):
-        """Post a meta query and return the result.
+        """Post a meta query and return the result .
 
         Note: Some meta queries require special handling. Use `self.query()`
             directly if this method cannot handle it properly and there is no

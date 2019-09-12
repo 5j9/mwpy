@@ -145,6 +145,14 @@ class APITest(TestCase):
         ae(await api.filerepoinfo(friprop='displayname'), [{'displayname': 'Commons'}, {'displayname': 'Wikipedia'}])
         ae(post_mock.mock_calls[0].kwargs, {'action': 'query', 'meta': 'filerepoinfo', 'friprop': 'displayname'})
 
+    @staticmethod
+    async def context_manager_test():
+        a = API('')
+        with patch.object(a.session, 'close') as close_mock:
+            async with a:
+                pass
+        close_mock.assert_called_once_with()
+
 
 if __name__ == '__main__':
     main()
