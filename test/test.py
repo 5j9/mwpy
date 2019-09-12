@@ -93,7 +93,7 @@ class APITest(TestCase):
         ae = self.assertEqual
         tokens = await api.tokens('watch')
         ae(tokens, {'watchtoken': '+\\'})
-        post_data = {'meta': 'tokens', 'type': 'watch', 'action': 'query', 'format': 'json', 'formatversion': '2', 'errorformat': 'plaintext', 'utf8': '', 'maxlag': 5}
+        post_data = {'meta': 'tokens', 'type': 'watch', 'action': 'query', 'format': 'json', 'formatversion': '2', 'errorformat': 'plaintext', 'maxlag': 5}
         ae(
             [c.kwargs['data'] for c in post_mock.mock_calls],
             [post_data, post_data])

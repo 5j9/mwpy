@@ -47,7 +47,6 @@ class API:
             'format': 'json',
             'formatversion': '2',
             'errorformat': 'plaintext',
-            'utf8': '',
             'maxlag': self.maxlag})
         resp = await self.session.post(self.url, data=data)
         json = resp.json()
