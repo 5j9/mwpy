@@ -7,6 +7,6 @@ resetwarnings()
 simplefilter('error')
 print(getcwd())
 test_suite = defaultTestLoader.discover(
-    '.' if getcwd().endswith('test') else 'test')
+    '.' if getcwd().endswith('tests') else 'tests')
 raise SystemExit(not TextTestRunner(
     resultclass=TextTestResult, verbosity=1).run(test_suite).wasSuccessful())
