@@ -3,7 +3,6 @@ git:
 language: python
 install:
     - pip install . codecov
-    - pip install -U attrs
 script:
     - coverage run tests
 matrix:
