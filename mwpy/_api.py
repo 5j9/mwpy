@@ -186,6 +186,10 @@ class API:
             assert json['batchcomplete'] is True
             return json['query'][meta]
 
+    async def userinfo(self, **kwargs):
+        """https://www.mediawiki.org/wiki/API:Userinfo"""
+        return await self.meta_query('userinfo', **kwargs)
+
     async def siteinfo(self, **kwargs: Any) -> dict:
         """https://www.mediawiki.org/wiki/API:Siteinfo"""
         async for json in self.query(meta='siteinfo', **kwargs):

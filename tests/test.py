@@ -133,6 +133,12 @@ class APITest(TestCase):
         ae(post_mock.mock_calls[0].kwargs, {'action': 'query', 'prop': 'langlinks', 'lllimit': 'max', 'titles': 'Main Page'})
         ae(titles_langlinks[0], {'pageid': 1182793, 'ns': 0, 'title': 'Main Page'})
 
+    @api_post_patch({'batchcomplete': True, 'query': {'userinfo': {'id': 0, 'name': '1.1.1.1', 'anon': True}}})
+    async def userinfo_test(self, post_mock):
+        ae = self.assertEqual
+        ae(await api.userinfo(), {'id': 0, 'name': '1.1.1.1', 'anon': True})
+        ae(post_mock.mock_calls[0].kwargs, {'action': 'query', 'meta': 'userinfo'})
+
 
 if __name__ == '__main__':
     main()
