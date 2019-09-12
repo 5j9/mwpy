@@ -4,7 +4,7 @@ language: python
 install:
     - pip install . codecov
 script:
-    - coverage run tests
+    - coverage run test
 python:
     - "3.5"
     - "3.6"
