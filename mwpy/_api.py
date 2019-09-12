@@ -3,6 +3,7 @@ from typing import Dict, AsyncGenerator, Any
 from logging import warning, debug
 
 from asks import Session
+from asks.response_objects import Response
 from trio import sleep
 
 from ._version import __version__
@@ -57,7 +58,9 @@ class API:
             return await self._handle_api_errors(data, resp, json['errors'])
         return json
 
-    async def _handle_api_errors(self, data, resp, errors):
+    async def _handle_api_errors(
+        self, data: dict, resp: Response, errors: dict
+    ):
         for error in errors:
             if error['code'] == 'maxlag':
                 retry_after = resp.headers['retry-after']
@@ -128,7 +131,7 @@ class API:
             for item in json['query'][list]:
                 yield item
 
-    async def prop_query(self, prop, **params: Any):
+    async def prop_query(self, prop: str, **params: Any):
         """Post a prop query, handle batchcomplete, and yield the results.
 
         https://www.mediawiki.org/wiki/API:Properties
@@ -159,18 +162,13 @@ class API:
                 if page is not batch_page:
                     batch_page[prop] += page[prop]
 
-    async def langlinks(
-        self, limit: int = 'max', prop: str = None, lang: str = None,
-        title: str = None, dir: str = None, inlanguagecode: str = None,
-        **prop_params
-    ):
+    async def langlinks(self, lllimit: int = 'max', **kwargs: Any):
         async for page_llink in self.prop_query(
-            'langlinks', llprop=prop, lllang=lang, lltitle=title, lldir=dir,
-            llinlanguagecode=inlanguagecode, lllimit=limit, **prop_params
+            'langlinks', lllimit=lllimit, **kwargs
         ):
             yield page_llink
 
-    async def meta_query(self, meta, **params: Any):
+    async def meta_query(self, meta, **kwargs: Any):
         """Post a meta query and yield the results.
 
         Note: siteinfo module requires special handling. Use self.siteinfo()
@@ -184,40 +182,21 @@ class API:
             raise NotImplementedError('use self.siteinfo() instead.')
         if meta == 'filerepoinfo':
             meta = 'repos'
-        async for json in self.query(meta=meta, **params):
+        async for json in self.query(meta=meta, **kwargs):
             assert json['batchcomplete'] is True
             return json['query'][meta]
 
-    async def siteinfo(
-        self, prop: str = None, filteriw: str = None, showalldb: str = None,
-        numberingroup: str = None, inlanguagecode: str = None,
-    ) -> dict:
+    async def siteinfo(self, **kwargs: Any) -> dict:
         """https://www.mediawiki.org/wiki/API:Siteinfo"""
-        async for json in self.query(
-            meta='siteinfo',
-            siprop=prop,
-            sifilteriw=filteriw,
-            sishowalldb=showalldb,
-            sinumberingroup=numberingroup,
-            siinlanguagecode=inlanguagecode,
-        ):
+        async for json in self.query(meta='siteinfo', **kwargs):
             assert 'batchcomplete' in json
             assert 'continue' not in json
             return json['query']
 
-    async def recentchanges(
-        self, start: str = None, end: str = None, dir: str = None,
-        namespace: str = None, user: str = None, excludeuser: str = None,
-        tag: str = None, prop: str = None, show: str = None,
-        limit: int = 'max', type: str = None, toponly: bool = None,
-        title: str = None
-    ):
+    async def recentchanges(self, rclimit: int = 'max', **kwargs: Any):
         """https://www.mediawiki.org/wiki/API:RecentChanges"""
         # Todo: somehow support rcgeneraterevisions
         async for rc in self.list_query(
-            list='recentchanges', rcstart=start, rcend=end, rcdir=dir,
-            rcnamespace=namespace, rcuser=user, rcexcludeuser=excludeuser,
-            rctag=tag, rcprop=prop, rcshow=show, rclimit=limit, rctype=type,
-            rctoponly=toponly, rctitle=title,
+            list='recentchanges', rclimit=rclimit, **kwargs
         ):
             yield rc

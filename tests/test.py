@@ -66,13 +66,14 @@ class APITest(TestCase):
     async def recentchanges_test(self, post_mock):
         ae = self.assertEqual
         ae(
-            [rc async for rc in api.recentchanges(limit=1, prop='timestamp')],
+            [rc async for rc in api.recentchanges(rclimit=1, rcprop='timestamp')],
             [
                 {'type': 'log', 'timestamp': '2019-09-08T07:30:00Z'},
                 {'type': 'categorize', 'timestamp': '2019-09-08T07:29:38Z'}])
-        post1_call_data = {'list': 'recentchanges', 'rcstart': None, 'rcend': None, 'rcdir': None, 'rcnamespace': None, 'rcuser': None, 'rcexcludeuser': None, 'rctag': None, 'rcprop': 'timestamp', 'rcshow': None, 'rclimit': 1, 'rctype': None, 'rctoponly': None, 'rctitle': None, 'action': 'query'}
+        post1_call_data = {'list': 'recentchanges', 'rcprop': 'timestamp', 'rclimit': 1, 'action': 'query'}
         post2_call_data = {**post1_call_data, 'rccontinue': '20190908072938|4484663', 'continue': '-||'}
-        ae([c.kwargs for c in post_mock.mock_calls], [post1_call_data, post2_call_data])
+        for call, kwargs in zip(post_mock.mock_calls, (post1_call_data, post2_call_data)):
+            ae(call.kwargs, kwargs)
 
     @patch('mwpy._api.sleep', fake_sleep)
     @patch('mwpy._api.warning')
@@ -102,11 +103,11 @@ class APITest(TestCase):
     @api_post_patch({'batchcomplete': True, 'query': {'protocols': ['http://', 'https://']}})
     async def siteinfo_test(self, post_mock):
         ae = self.assertEqual
-        si = await api.siteinfo(prop='protocols')
+        si = await api.siteinfo(siprop='protocols')
         ae(si, {'protocols': ['http://', 'https://']})
         calls = post_mock.mock_calls
         ae(len(calls), 1)
-        ae(calls[0].kwargs, {'action': 'query', 'meta': 'siteinfo', 'siprop': 'protocols', 'sifilteriw': None, 'sishowalldb': None, 'sinumberingroup': None, 'siinlanguagecode': None})
+        ae(calls[0].kwargs, {'action': 'query', 'meta': 'siteinfo', 'siprop': 'protocols'})
 
     @api_post_patch(
         {'continue': {'llcontinue': '15580374|bg', 'continue': '||'}, 'query': {'pages': [{'pageid': 15580374, 'ns': 0, 'title': 'Main Page', 'langlinks': [{'lang': 'ar', 'title': ''}]}]}},
@@ -114,11 +115,13 @@ class APITest(TestCase):
     async def langlinks_test(self, post_mock):
         ae = self.assertEqual
         titles_langlinks = [page_ll async for page_ll in api.langlinks(
-            titles='Main Page', limit=1)]
+            titles='Main Page', lllimit=1)]
         ae(len(titles_langlinks), 1)
-        ae([c.kwargs for c in post_mock.mock_calls], [
-            {'action': 'query', 'prop': 'langlinks', 'llprop': None, 'lllang': None, 'lltitle': None, 'lldir': None, 'llinlanguagecode': None, 'lllimit': 1, 'titles': 'Main Page'},
-            {'action': 'query', 'prop': 'langlinks', 'llprop': None, 'lllang': None, 'lltitle': None, 'lldir': None, 'llinlanguagecode': None, 'lllimit': 1, 'titles': 'Main Page', 'llcontinue': '15580374|bg', 'continue': '||'}])
+        for call, kwargs in zip(post_mock.mock_calls, (
+            {'action': 'query', 'prop': 'langlinks', 'lllimit': 1, 'titles': 'Main Page'},
+            {'action': 'query', 'prop': 'langlinks', 'lllimit': 1, 'titles': 'Main Page', 'llcontinue': '15580374|bg', 'continue': '||'}
+        )):
+            ae(call.kwargs, kwargs)
         ae(titles_langlinks[0], {'pageid': 15580374, 'ns': 0, 'title': 'Main Page', 'langlinks': [{'lang': 'ar', 'title': ''}, {'lang': 'zh', 'title': ''}]})
 
     @api_post_patch({'batchcomplete': True, 'query': {'pages': [{'pageid': 1182793, 'ns': 0, 'title': 'Main Page'}]}, 'limits': {'langlinks': 500}})
@@ -127,7 +130,7 @@ class APITest(TestCase):
         titles_langlinks = [page_ll async for page_ll in api.langlinks(
             titles='Main Page')]
         ae(len(titles_langlinks), 1)
-        ae(post_mock.mock_calls[0].kwargs, {'action': 'query', 'prop': 'langlinks', 'llprop': None, 'lllang': None, 'lltitle': None, 'lldir': None, 'llinlanguagecode': None, 'lllimit': 'max', 'titles': 'Main Page'})
+        ae(post_mock.mock_calls[0].kwargs, {'action': 'query', 'prop': 'langlinks', 'lllimit': 'max', 'titles': 'Main Page'})
         ae(titles_langlinks[0], {'pageid': 1182793, 'ns': 0, 'title': 'Main Page'})
 
 
