@@ -139,6 +139,12 @@ class APITest(TestCase):
         ae(await api.userinfo(), {'id': 0, 'name': '1.1.1.1', 'anon': True})
         ae(post_mock.mock_calls[0].kwargs, {'action': 'query', 'meta': 'userinfo'})
 
+    @api_post_patch({'batchcomplete': True, 'query': {'repos': [{'displayname': 'Commons'}, {'displayname': 'Wikipedia'}]}})
+    async def filerepoinfo_test(self, post_mock):
+        ae = self.assertEqual
+        ae(await api.filerepoinfo(friprop='displayname'), [{'displayname': 'Commons'}, {'displayname': 'Wikipedia'}])
+        ae(post_mock.mock_calls[0].kwargs, {'action': 'query', 'meta': 'filerepoinfo', 'friprop': 'displayname'})
+
 
 if __name__ == '__main__':
     main()

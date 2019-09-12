@@ -180,9 +180,9 @@ class API:
         """
         if meta == 'siteinfo':
             raise NotImplementedError('use self.siteinfo() instead.')
-        if meta == 'filerepoinfo':
-            meta = 'repos'
         async for json in self.query(meta=meta, **kwargs):
+            if meta == 'filerepoinfo':
+                meta = 'repos'
             assert json['batchcomplete'] is True
             return json['query'][meta]
 
@@ -204,3 +204,7 @@ class API:
             list='recentchanges', rclimit=rclimit, **kwargs
         ):
             yield rc
+
+    async def filerepoinfo(self, **kwargs: Any):
+        """https://www.mediawiki.org/wiki/API:Filerepoinfo"""
+        return await self.meta_query('filerepoinfo', **kwargs)
