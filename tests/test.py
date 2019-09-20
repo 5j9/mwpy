@@ -1,8 +1,6 @@
 from collections import namedtuple
-from unittest import main, TestCase
+from unittest import main, IsolatedAsyncioTestCase
 from unittest.mock import patch
-
-from trio import run
 
 from mwpy import API
 
@@ -14,18 +12,6 @@ async def fake_sleep(_):
     return
 
 FakeResp = namedtuple('FakeResp', ('json', 'headers'))
-
-
-def add_async_test_runners(c):
-    class_dict = vars(c)
-    for attr_name, attr in class_dict.copy().items():
-        if attr_name[-5:] == '_test':
-            def closure(attr_name):
-                def test_case(s):
-                    run(getattr(s, attr_name))
-                return test_case
-            setattr(c, 'test_' + attr_name[:-5], closure(attr_name))
-    return c
 
 
 def patch_awaitable(obj, attr, return_values):
@@ -48,13 +34,12 @@ def session_post_patch(*return_values):
     return patch_awaitable(api.session, 'post', return_values)
 
 
-@add_async_test_runners
-class APITest(TestCase):
+class APITest(IsolatedAsyncioTestCase):
 
     @api_post_patch(
         {'batchcomplete': True, 'query': {'tokens': {'logintoken': 'LOGIN_TOKEN'}}},
         {'login': {'result': 'Success', 'lguserid': 1, 'lgusername': 'U'}})
-    async def login_test(self, post_mock):
+    async def test_login(self, post_mock):
         await api.login('U', 'P')
         self.assertEqual([c.kwargs for c in post_mock.mock_calls], [
             {'action': 'query', 'meta': 'tokens', 'type': 'login'},
@@ -63,7 +48,7 @@ class APITest(TestCase):
     @api_post_patch(
         {'batchcomplete': True, 'continue': {'rccontinue': '20190908072938|4484663', 'continue': '-||'}, 'query': {'recentchanges': [{'type': 'log', 'timestamp': '2019-09-08T07:30:00Z'}]}},
         {'batchcomplete': True, 'query': {'recentchanges': [{'type': 'categorize', 'timestamp': '2019-09-08T07:29:38Z'}]}})
-    async def recentchanges_test(self, post_mock):
+    async def test_recentchanges(self, post_mock):
         ae = self.assertEqual
         ae(
             [rc async for rc in api.recentchanges(rclimit=1, rcprop='timestamp')],
@@ -90,7 +75,7 @@ class APITest(TestCase):
                 'servedby': 'mw1225'},
             {'retry-after': '5'}),
         FakeResp(lambda: {'batchcomplete': True, 'query': {'tokens': {'watchtoken': '+\\'}}}, {}))
-    async def maxlag_test(self, post_mock, warning_mock):
+    async def test_maxlag(self, post_mock, warning_mock):
         ae = self.assertEqual
         tokens = await api.tokens('watch')
         ae(tokens, {'watchtoken': '+\\'})
@@ -101,7 +86,7 @@ class APITest(TestCase):
         warning_mock.assert_called_with('maxlag error (retrying after 5 seconds)')
 
     @api_post_patch({'batchcomplete': True, 'query': {'protocols': ['http://', 'https://']}})
-    async def siteinfo_test(self, post_mock):
+    async def test_siteinfo(self, post_mock):
         ae = self.assertEqual
         si = await api.siteinfo(siprop='protocols')
         ae(si, {'protocols': ['http://', 'https://']})
@@ -112,7 +97,7 @@ class APITest(TestCase):
     @api_post_patch(
         {'continue': {'llcontinue': '15580374|bg', 'continue': '||'}, 'query': {'pages': [{'pageid': 15580374, 'ns': 0, 'title': 'Main Page', 'langlinks': [{'lang': 'ar', 'title': ''}]}]}},
         {'batchcomplete': True, 'query': {'pages': [{'pageid': 15580374, 'ns': 0, 'title': 'Main Page', 'langlinks': [{'lang': 'zh', 'title': ''}]}]}})
-    async def langlinks_test(self, post_mock):
+    async def test_langlinks(self, post_mock):
         ae = self.assertEqual
         titles_langlinks = [page_ll async for page_ll in api.langlinks(
             titles='Main Page', lllimit=1)]
@@ -125,7 +110,7 @@ class APITest(TestCase):
         ae(titles_langlinks[0], {'pageid': 15580374, 'ns': 0, 'title': 'Main Page', 'langlinks': [{'lang': 'ar', 'title': ''}, {'lang': 'zh', 'title': ''}]})
 
     @api_post_patch({'batchcomplete': True, 'query': {'pages': [{'pageid': 1182793, 'ns': 0, 'title': 'Main Page'}]}, 'limits': {'langlinks': 500}})
-    async def lang_links_title_not_exists_test(self, post_mock):
+    async def test_lang_links_title_not_exists(self, post_mock):
         ae = self.assertEqual
         titles_langlinks = [page_ll async for page_ll in api.langlinks(
             titles='Main Page')]
@@ -134,19 +119,19 @@ class APITest(TestCase):
         ae(titles_langlinks[0], {'pageid': 1182793, 'ns': 0, 'title': 'Main Page'})
 
     @api_post_patch({'batchcomplete': True, 'query': {'userinfo': {'id': 0, 'name': '1.1.1.1', 'anon': True}}})
-    async def userinfo_test(self, post_mock):
+    async def test_userinfo(self, post_mock):
         ae = self.assertEqual
         ae(await api.userinfo(), {'id': 0, 'name': '1.1.1.1', 'anon': True})
         ae(post_mock.mock_calls[0].kwargs, {'action': 'query', 'meta': 'userinfo'})
 
     @api_post_patch({'batchcomplete': True, 'query': {'repos': [{'displayname': 'Commons'}, {'displayname': 'Wikipedia'}]}})
-    async def filerepoinfo_test(self, post_mock):
+    async def test_filerepoinfo(self, post_mock):
         ae = self.assertEqual
         ae(await api.filerepoinfo(friprop='displayname'), [{'displayname': 'Commons'}, {'displayname': 'Wikipedia'}])
         ae(post_mock.mock_calls[0].kwargs, {'action': 'query', 'meta': 'filerepoinfo', 'friprop': 'displayname'})
 
     @staticmethod
-    async def context_manager_test():
+    async def test_context_manager():
         a = API('')
         with patch.object(a.session, 'close') as close_mock:
             async with a:
