@@ -44,9 +44,12 @@ def session_post_patch(*return_values: dict):
         FakeResp(headers, json) for headers, json in zip(iterator, iterator)))
 
 
+# noinspection PyProtectedMember
 class APITest(IsolatedAsyncioTestCase):
 
-    def setUp(self):
+    # noinspection PyPep8Naming
+    @staticmethod
+    def setUp():
         api.clear_cache()
 
     @api_post_patch(
@@ -87,7 +90,6 @@ class APITest(IsolatedAsyncioTestCase):
         else:
             raise AssertionError('LoginError was not raised')
         self.assertEqual(len(post_mock.mock_calls), 1)
-
 
     @api_post_patch(
         {'batchcomplete': True, 'continue': {'rccontinue': '20190908072938|4484663', 'continue': '-||'}, 'query': {'recentchanges': [{'type': 'log', 'timestamp': '2019-09-08T07:30:00Z'}]}},
@@ -193,6 +195,19 @@ class APITest(IsolatedAsyncioTestCase):
         await api.patrol(revid=1)
         post_mock.assert_called_with(action='patrol', token='+', revid=1)
 
+    @session_post_patch({}, {'errors': [{'code': 'badtoken', 'text': 'Invalid CSRF token.', 'module': 'patrol'}], 'docref': 'D', 'servedby': 'mw1279'})
+    async def test_bad_patrol_token(self, _):
+        api.patrol_token = '+'
+        try:
+            await api.patrol(revid=1)
+        except APIError:
+            pass
+        else:
+            raise AssertionError('APIError was not raised')
+        with patch.object(api, 'tokens', return_value={'patroltoken': 'N'}) as tokens_mock:
+            self.assertEqual(await api.patrol_token, 'N')
+        tokens_mock.assert_called_once_with('patrol')
+
     @staticmethod
     async def test_rawcontinue():
         try:
@@ -211,6 +226,18 @@ class APITest(IsolatedAsyncioTestCase):
         ):
             await api.post()
         warning_mock.assert_called_once_with(pformat(warnings))
+
+    @api_post_patch({})
+    async def test_logout(self, post_mock):
+        api.csrf_token = 'T'
+        await api.logout()
+        post_mock.assert_called_once()
+        self.assertIsNone(api._csrf_token)
+
+    @api_post_patch({'batchcomplete': True, 'query': {'tokens': {'csrftoken': '+\\'}}})
+    async def test_csrf_token(self, post_mock):
+        self.assertEqual(await api.csrf_token, '+\\')
+        post_mock.assert_called_once()
 
 
 if __name__ == '__main__':

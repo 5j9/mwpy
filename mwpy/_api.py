@@ -1,3 +1,4 @@
+from inspect import iscoroutinefunction
 from pprint import pformat
 from typing import Dict, AsyncGenerator, Any
 from logging import warning, debug, info
@@ -59,22 +60,58 @@ class API:
         if 'warnings' in json:
             warning(pformat(json['warnings']))
         if 'errors' in json:
-            return await self._handle_api_errors(data, resp, json['errors'])
+            return await self._handle_api_errors(data, resp, json)
         return json
 
-    async def _handle_api_errors(
-        self, data: dict, resp: Response, errors: dict
-    ):
+    async def _handle_api_errors(self, data: dict, resp: Response, json: dict):
+        errors = json['errors']
         for error in errors:
-            if error['code'] == 'maxlag':
-                retry_after = resp.headers['retry-after']
-                warning(f'maxlag error (retrying after {retry_after} seconds)')
-                await sleep(int(retry_after))
-                return await(self.post(**data))
+            handler = getattr(self, f'_handle_{error["code"]}_error', None)
+            if handler is not None:
+                if iscoroutinefunction(handler):
+                    handler_result = await handler(resp, data, error)
+                else:
+                    handler_result = handler(resp, data, error)
+                if handler_result is not None:
+                    return handler_result
         raise APIError(errors)
 
+    async def _handle_maxlag_error(
+        self, resp: Response, data: dict, _
+    ) -> dict:
+        retry_after = resp.headers['retry-after']
+        warning(f'maxlag error (retrying after {retry_after} seconds)')
+        await sleep(int(retry_after))
+        return await(self.post(**data))
+
+    async def _handle_badtoken_error(self, _: Response, __: dict, error: dict):
+        if error['module'] == 'patrol':
+            info('invalidating patrol token cache')
+            del self.patrol_token
+
+    @property
+    async def csrf_token(self):
+        token = getattr(self, '_csrf_token', None)
+        if token is None:
+            token = self._csrf_token = (
+                await self.tokens('csrf'))['csrftoken']
+        return token
+
+    @csrf_token.setter
+    def csrf_token(self, value):
+        self._csrf_token = value
+
+    @csrf_token.deleter
+    def csrf_token(self):
+        self._csrf_token = None
+
+    async def logout(self):
+        """https://www.mediawiki.org/wiki/API:Logout"""
+        await self.post(action='logout', token=await self.csrf_token)
+        self.clear_cache()
+
     async def query(self, **params: Any) -> AsyncGenerator[dict, None]:
-        """Post an API query and yeild results.
+        """Post an API query and yield results.
 
         Handle continuations.
 
@@ -131,6 +168,7 @@ class API:
             **kwargs)
         result = json['login']['result']
         if result == 'Success':
+            self.clear_cache()
             return
         if result == 'WrongToken':
             # token is outdated?
@@ -267,4 +305,4 @@ class API:
 
     def clear_cache(self):
         """Clear cached values."""
-        del self.login_token, self.patrol_token
+        del self.login_token, self.patrol_token, self.csrf_token
