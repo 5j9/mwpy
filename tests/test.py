@@ -239,6 +239,14 @@ class APITest(IsolatedAsyncioTestCase):
         self.assertEqual(await api.csrf_token, '+\\')
         post_mock.assert_called_once()
 
+    @api_post_patch({'batchcomplete': True, 'query': {'logevents': [{'timestamp': '2004-12-23T18:41:10Z'}]}})
+    async def test_logevents(self, post_mock):
+        ae = self.assertEqual
+        events = [e async for e in api.logevents(1, leprop='timestamp', ledir='newer', leend='2004-12-23T18:41:10Z')]
+        ae(len(events), 1)
+        ae(events[0], {'timestamp': '2004-12-23T18:41:10Z'})
+        ae(post_mock.mock_calls[0].kwargs, {'action': 'query', 'list': 'logevents', 'lelimit': 1, 'leprop': 'timestamp', 'ledir': 'newer', 'leend': '2004-12-23T18:41:10Z'})
+
 
 if __name__ == '__main__':
     main()

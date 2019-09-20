@@ -306,3 +306,8 @@ class API:
     def clear_cache(self):
         """Clear cached values."""
         del self.login_token, self.patrol_token, self.csrf_token
+
+    async def logevents(self, lelimit: int ='max', **kwargs):
+        """https://www.mediawiki.org/wiki/API:Logevents"""
+        async for e in self.list_query('logevents', lelimit=lelimit, **kwargs):
+            yield e
