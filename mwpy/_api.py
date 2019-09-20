@@ -1,6 +1,6 @@
 from pprint import pformat
 from typing import Dict, AsyncGenerator, Any
-from logging import warning, debug
+from logging import warning, debug, info
 
 from asks import Session
 from asks.response_objects import Response
@@ -13,7 +13,11 @@ class APIError(RuntimeError):
     pass
 
 
-# noinspection PyShadowingBuiltins
+class LoginError(RuntimeError):
+    pass
+
+
+# noinspection PyShadowingBuiltins,PyAttributeOutsideInit
 class API:
 
     def __init__(
@@ -94,21 +98,46 @@ class API:
         """
         return await self.meta_query('tokens', type=type)
 
-    async def login(self, name: str, password: str, domain=None) -> None:
-        """Login using bot name and bot password.
+    @property
+    async def login_token(self):
+        """Fetch login token and cache the result.
 
-        Should only be used in combination with Special:BotPasswords;
-        use for main-account login is deprecated and may fail without warning.
+        Use deleter to invalidate cache.
+        """
+        token = getattr(self, '_login_token', None)
+        if token is None:
+            token = self._login_token = (
+                await self.tokens('login'))['logintoken']
+        return token
 
-        https://www.mediawiki.org/wiki/API:Login
+    @login_token.setter
+    def login_token(self, value):
+        self._login_token = value
+
+    @login_token.deleter
+    def login_token(self):
+        self._login_token = None
+
+    async def login(self, lgname: str, lgpassword: str, **kwargs: Any) -> None:
+        """https://www.mediawiki.org/wiki/API:Login
+
+        `lgtoken` will be added automatically.
         """
         json = await self.post(
             action='login',
-            lgname=name,
-            lgpassword=password,
-            lgdomain=domain,
-            lgtoken=(await self.tokens('login'))['logintoken'])
-        assert json['login']['result'] == 'Success', json['login']['result']
+            lgname=lgname,
+            lgpassword=lgpassword,
+            lgtoken=await self.login_token,
+            **kwargs)
+        result = json['login']['result']
+        if result == 'Success':
+            return
+        if result == 'WrongToken':
+            # token is outdated?
+            info(result)
+            del self._login_token
+            return await self.login(lgname, lgpassword, **kwargs)
+        raise LoginError(result)
         # todo: store user and pass for relogin and assert username for now on
 
     async def close(self) -> None:
@@ -207,3 +236,35 @@ class API:
     async def filerepoinfo(self, **kwargs: Any):
         """https://www.mediawiki.org/wiki/API:Filerepoinfo"""
         return await self.meta_query('filerepoinfo', **kwargs)
+
+    @property
+    async def patrol_token(self):
+        """Fetch patrol token and cache the result.
+
+        Use deleter to invalidate cache.
+        """
+        token = getattr(self, '_patrol_token', None)
+        if token is None:
+            token = self._patrol_token = (
+                await self.tokens('patrol'))['patroltoken']
+        return token
+
+    @patrol_token.setter
+    def patrol_token(self, value):
+        self._patrol_token = value
+
+    @patrol_token.deleter
+    def patrol_token(self):
+        self._patrol_token = None
+
+    async def patrol(self, **kwargs: Any) -> None:
+        """https://www.mediawiki.org/wiki/API:Patrol
+
+        `token` will be added automatically.
+        """
+        await self.post(
+            action='patrol', token=await self.patrol_token, **kwargs)
+
+    def clear_cache(self):
+        """Clear cached values."""
+        del self.login_token, self.patrol_token

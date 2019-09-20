@@ -1,8 +1,8 @@
-from collections import namedtuple
+from dataclasses import dataclass
 from unittest import main, IsolatedAsyncioTestCase
 from unittest.mock import patch
 
-from mwpy import API
+from mwpy import API, LoginError, APIError
 
 
 api = API('https://www.mediawiki.org/w/api.php')
@@ -11,7 +11,14 @@ api = API('https://www.mediawiki.org/w/api.php')
 async def fake_sleep(_):
     return
 
-FakeResp = namedtuple('FakeResp', ('json', 'headers'))
+
+@dataclass
+class FakeResp:
+    headers: dict
+    _json: dict
+
+    def json(self):
+        return self._json
 
 
 def patch_awaitable(obj, attr, return_values):
@@ -26,24 +33,60 @@ def patch_awaitable(obj, attr, return_values):
     return patch.object(obj, attr, side_effect=fake_posts)
 
 
-def api_post_patch(*return_values):
+def api_post_patch(*return_values: dict):
     return patch_awaitable(api, 'post', return_values)
 
 
-def session_post_patch(*return_values):
-    return patch_awaitable(api.session, 'post', return_values)
+def session_post_patch(*return_values: dict):
+    iterator = iter(return_values)
+    return patch_awaitable(api.session, 'post', (
+        FakeResp(headers, json) for headers, json in zip(iterator, iterator)))
 
 
 class APITest(IsolatedAsyncioTestCase):
 
+    def setUp(self):
+        api.clear_cache()
+
     @api_post_patch(
-        {'batchcomplete': True, 'query': {'tokens': {'logintoken': 'LOGIN_TOKEN'}}},
+        {'batchcomplete': True, 'query': {'tokens': {'logintoken': 'T'}}},
         {'login': {'result': 'Success', 'lguserid': 1, 'lgusername': 'U'}})
     async def test_login(self, post_mock):
-        await api.login('U', 'P')
-        self.assertEqual([c.kwargs for c in post_mock.mock_calls], [
+        ae = self.assertEqual
+        await api.login(lgname='U', lgpassword='P')
+        for call, expected_kwargs in zip(post_mock.mock_calls, (
             {'action': 'query', 'meta': 'tokens', 'type': 'login'},
-            {'action': 'login', 'lgname': 'U', 'lgpassword': 'P', 'lgdomain': None, 'lgtoken': 'LOGIN_TOKEN'}])
+            {'action': 'login', 'lgname': 'U', 'lgpassword': 'P', 'lgtoken': 'T'})
+        ):
+            ae(call.kwargs, expected_kwargs)
+
+    @api_post_patch(
+        {'batchcomplete': True, 'query': {'tokens': {'logintoken': 'T1'}}},
+        {'login': {'result': 'WrongToken'}},
+        {'batchcomplete': True, 'query': {'tokens': {'logintoken': 'T2'}}},
+        {'login': {'result': 'Success', 'lguserid': 1, 'lgusername': 'U'}})
+    async def test_bad_login_token(self, post_mock):
+        ae = self.assertEqual
+        await api.login(lgname='U', lgpassword='P')
+        for call, expected_kwargs in zip(post_mock.mock_calls, (
+            {'action': 'query', 'meta': 'tokens', 'type': 'login'},
+            {'action': 'login', 'lgtoken': 'T1', 'lgname': 'U', 'lgpassword': 'P'},
+            {'action': 'query', 'meta': 'tokens', 'type': 'login'},
+            {'action': 'login', 'lgtoken': 'T2', 'lgname': 'U', 'lgpassword': 'P'},)
+        ):
+            ae(call.kwargs, expected_kwargs)
+
+    @api_post_patch({'login': {'result': 'U', 'lguserid': 1, 'lgusername': 'U'}})
+    async def test_unknown_login_result(self, post_mock):
+        api.login_token = 'T'
+        try:
+            await api.login(lgname='U', lgpassword='P')
+        except LoginError:
+            pass
+        else:
+            raise AssertionError('LoginError was not raised')
+        self.assertEqual(len(post_mock.mock_calls), 1)
+
 
     @api_post_patch(
         {'batchcomplete': True, 'continue': {'rccontinue': '20190908072938|4484663', 'continue': '-||'}, 'query': {'recentchanges': [{'type': 'log', 'timestamp': '2019-09-08T07:30:00Z'}]}},
@@ -63,18 +106,9 @@ class APITest(IsolatedAsyncioTestCase):
     @patch('mwpy._api.sleep', fake_sleep)
     @patch('mwpy._api.warning')
     @session_post_patch(
-        FakeResp(
-            lambda: {
-                'errors': [{
-                    'code': 'maxlag',
-                    'text': 'Waiting for 10.64.16.7: 0.80593395233154 seconds lagged.',
-                    'data': {
-                        'host': '10.64.16.7', 'lag': 0.805933952331543,
-                        'type': 'db'}, 'module': 'main'}],
-                'docref': 'See https://www.mediawiki.org/w/api.php for API usage. Subscribe to the mediawiki-api-announce mailing list at &lt;https://lists.wikimedia.org/mailman/listinfo/mediawiki-api-announce&gt; for notice of API deprecations and breaking changes.',
-                'servedby': 'mw1225'},
-            {'retry-after': '5'}),
-        FakeResp(lambda: {'batchcomplete': True, 'query': {'tokens': {'watchtoken': '+\\'}}}, {}))
+        {'retry-after': '5'},
+        {'errors': [{'code': 'maxlag', 'text': 'Waiting for 10.64.16.7: 0.80593395233154 seconds lagged.', 'data': {'host': '10.64.16.7', 'lag': 0.805933952331543, 'type': 'db'}, 'module': 'main'}], 'docref': 'See https://www.mediawiki.org/w/api.php for API usage. Subscribe to the mediawiki-api-announce mailing list at &lt;https://lists.wikimedia.org/mailman/listinfo/mediawiki-api-announce&gt; for notice of API deprecations and breaking changes.', 'servedby': 'mw1225'},
+        {}, {'batchcomplete': True, 'query': {'tokens': {'watchtoken': '+\\'}}})
     async def test_maxlag(self, post_mock, warning_mock):
         ae = self.assertEqual
         tokens = await api.tokens('watch')
@@ -137,6 +171,26 @@ class APITest(IsolatedAsyncioTestCase):
             async with a:
                 pass
         close_mock.assert_called_once_with()
+
+    @session_post_patch(
+        {}, {'batchcomplete': True, 'query': {'tokens': {'patroltoken': '+\\'}}},
+        {}, {'errors': [{'code': 'permissiondenied', 'text': 'T', 'module': 'patrol'}], 'docref': 'D', 'servedby': 'mw1233'})
+    async def test_patrol_not_logged_in(self, post_mock):
+        try:
+            await api.patrol(revid=27040231)
+        except APIError:
+            pass
+        else:
+            raise AssertionError('APIError was not raised')
+        post_mock.assert_called_with(
+            'https://www.mediawiki.org/w/api.php',
+            data={'revid': 27040231, 'action': 'patrol', 'token': '+\\', 'format': 'json', 'formatversion': '2', 'errorformat': 'plaintext', 'maxlag': 5})
+
+    @api_post_patch({'patrol': {'rcid': 1, 'ns': 4, 'title': 'T'}})
+    async def test_patrol(self, post_mock):
+        api.patrol_token = '+'
+        await api.patrol(revid=1)
+        post_mock.assert_called_with(action='patrol', token='+', revid=1)
 
 
 if __name__ == '__main__':
