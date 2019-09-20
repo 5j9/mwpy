@@ -192,6 +192,16 @@ class APITest(IsolatedAsyncioTestCase):
         await api.patrol(revid=1)
         post_mock.assert_called_with(action='patrol', token='+', revid=1)
 
+    @staticmethod
+    async def test_rawcontinue():
+        try:
+            async for _ in api.query(rawcontinue=''):
+                pass
+        except NotImplementedError:
+            pass
+        else:
+            raise AssertionError('rawcontinue did not raise in query')
+
 
 if __name__ == '__main__':
     main()
