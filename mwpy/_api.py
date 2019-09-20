@@ -84,7 +84,7 @@ class API:
         await sleep(int(retry_after))
         return await(self.post(**data))
 
-    async def _handle_badtoken_error(self, _: Response, __: dict, error: dict):
+    def _handle_badtoken_error(self, _: Response, __: dict, error: dict):
         if error['module'] == 'patrol':
             info('invalidating patrol token cache')
             del self.patrol_token
