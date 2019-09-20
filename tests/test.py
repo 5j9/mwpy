@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pprint import pformat
 from unittest import main, IsolatedAsyncioTestCase
 from unittest.mock import patch
 
@@ -201,6 +202,15 @@ class APITest(IsolatedAsyncioTestCase):
             pass
         else:
             raise AssertionError('rawcontinue did not raise in query')
+
+    @patch('mwpy._api.warning')
+    async def test_warnings(self, warning_mock):
+        warnings = [{'code': 'unrecognizedparams', 'text': 'Unrecognized parameter: unknown_param.', 'module': 'main'}]
+        with session_post_patch(
+            {}, {'warnings': warnings, 'batchcomplete': True}
+        ):
+            await api.post()
+        warning_mock.assert_called_once_with(pformat(warnings))
 
 
 if __name__ == '__main__':
