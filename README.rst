@@ -9,7 +9,7 @@
 
 Installation
 ------------
-``mwpy`` development is done using Python 3.8 (because of the nice new ``async`` features of it) but theoretically the library should be Python 3.6+ compatible. Hopefully there will be more solid support for 3.6+ as soon as ``unittest`` and ``mock`` backports become available.
+``mwpy`` requires Python 3.9+!
 
 .. code-block::
 

@@ -1,6 +1,6 @@
 from inspect import iscoroutinefunction
 from pprint import pformat
-from typing import Dict, AsyncGenerator, Any
+from typing import AsyncGenerator, Any
 from logging import warning, debug, info
 
 from asks import Session
@@ -128,7 +128,7 @@ class API:
                 return
             params.update(continue_)
 
-    async def tokens(self, type: str) -> Dict[str, str]:
+    async def tokens(self, type: str) -> dict[str, str]:
         """Query API for tokens. Return the json response.
 
         https://www.mediawiki.org/wiki/API:Tokens
@@ -307,7 +307,7 @@ class API:
         """Clear cached values."""
         del self.login_token, self.patrol_token, self.csrf_token
 
-    async def logevents(self, lelimit: int ='max', **kwargs):
+    async def logevents(self, lelimit: int = 'max', **kwargs):
         """https://www.mediawiki.org/wiki/API:Logevents"""
         async for e in self.list_query('logevents', lelimit=lelimit, **kwargs):
             yield e
