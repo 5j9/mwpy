@@ -27,6 +27,7 @@ setup(
     packages=['mwpy'],
     python_requires='>=3.5',
     install_requires=['trio', 'asks'],
+    tests_require=['pytest'],
     classifiers=[
         'Development Status :: 1 - Planning',
         'Intended Audience :: Developers',
