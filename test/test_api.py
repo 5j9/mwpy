@@ -90,7 +90,7 @@ async def test_unknown_login_result(post_mock):
         await api.login(lgname='U', lgpassword='P')
     except LoginError:
         pass
-    else:
+    else:  # pragma: nocover
         raise AssertionError('LoginError was not raised')
     assert len(post_mock.mock_calls) == 1
 
@@ -184,7 +184,7 @@ async def test_patrol_not_logged_in(post_mock):
         await api.patrol(revid=27040231)
     except APIError:
         pass
-    else:
+    else:  # pragma: nocover
         raise AssertionError('APIError was not raised')
     post_mock.assert_called_with(
         'https://www.mediawiki.org/w/api.php',
@@ -205,7 +205,7 @@ async def test_bad_patrol_token(_):
         await api.patrol(revid=1)
     except APIError:
         pass
-    else:
+    else:  # pragma: nocover
         raise AssertionError('APIError was not raised')
     with patch.object(api, 'tokens', return_value={'patroltoken': 'N'}) as tokens_mock:
         assert await api.patrol_token == 'N'
@@ -218,7 +218,7 @@ async def test_rawcontinue():
             pass
     except NotImplementedError:
         pass
-    else:
+    else:  # pragma: nocover
         raise AssertionError('rawcontinue did not raise in query')
 
 
