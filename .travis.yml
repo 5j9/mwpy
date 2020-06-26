@@ -4,7 +4,7 @@ language: python
 install:
     - pip install . codecov pytest-trio
 script:
-    - coverage run tests
+    - coverage run -m pytest
 matrix:
   include:
     - python: nightly
