@@ -5,7 +5,8 @@
 .. image:: https://codecov.io/gh/5j9/mwpy/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/5j9/mwpy
 
-``mwpy`` is an ``async`` Python_ client for MediaWiki_ API. It's built on top of asks_ and trio_!
+This is a personal pet project.
+An ``async`` Python_ client for MediaWiki_ API built on top of asks_ and trio_!
 
 Installation
 ------------
