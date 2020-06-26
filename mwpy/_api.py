@@ -311,3 +311,12 @@ class API:
         """https://www.mediawiki.org/wiki/API:Logevents"""
         async for e in self.list_query('logevents', lelimit=lelimit, **kwargs):
             yield e
+
+    async def revisions(self, **kwargs):
+        """https://www.mediawiki.org/wiki/API:Revisions"""
+        if 'rvlimit' not in kwargs and (
+                {'rvstart', 'rvend', 'rvlimit'} & kwargs.keys()):
+            # Mode 2: Get revisions for one given page
+            kwargs['rvlimit'] = 'max'
+        async for revisions in self.prop_query('revisions', **kwargs):
+            yield revisions
