@@ -6,7 +6,7 @@ from path import Path
 
 root = Path(__file__).parent.parent
 root.cd()
-run(('coverage', 'run', 'test'))
+run(('coverage', 'run', '-m', 'pytest'))
 run(('coverage', 'html'))
 index = root / "htmlcov/index.html"
 open_new_tab(f'file://{index}')
