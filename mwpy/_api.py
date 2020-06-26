@@ -7,7 +7,7 @@ from asks import Session
 from asks.response_objects import Response
 from trio import sleep
 
-from ._version import __version__
+__version__ = '0.4.dev0'
 
 
 class APIError(RuntimeError):

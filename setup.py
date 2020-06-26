@@ -13,7 +13,7 @@ setup(
     version=search(
         r"^__version__ = '([^']*)'",
         open(
-            join(here, 'mwpy', '_version.py'),
+            join(here, 'mwpy', '__init__.py'),
             encoding='ascii', errors='ignore').read(),
         MULTILINE,
     ).group(1),
