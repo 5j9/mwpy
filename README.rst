@@ -7,6 +7,7 @@
 
 This is a personal pet project.
 An ``async`` Python_ client for MediaWiki_ API built on top of asks_ and trio_!
+Currently this project is abandoned in favour of pymw_, a synchronous fork of this project that uses requests.
 
 Installation
 ------------
@@ -37,3 +38,4 @@ Notable features
 .. _siteinfo: https://www.mediawiki.org/wiki/API:Siteinfo
 .. _maxlag: https://www.mediawiki.org/wiki/Manual:Maxlag_parameter
 .. _Python: https://www.python.org/
+.. _pymw: https://github.com/5j9/pymw
